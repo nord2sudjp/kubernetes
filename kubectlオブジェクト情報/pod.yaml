@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Pod","metadata":{"annotations":{},"labels":{"app":"sample-app"},"name":"sample-env","namespace":"default"},"spec":{"containers":[{"env":[{"name":"MAX_CONNECTION","value":"100"}],"image":"nginx:1.16","name":"nginx-container"}]}}
+  creationTimestamp: "2021-04-23T14:00:10Z"
+  labels:
+    app: sample-app
+  name: sample-env
+  namespace: default
+  resourceVersion: "22883"
+  uid: c03620d1-f9aa-48cc-b30e-1f4e288f4ca1
+spec:
+  containers:
+  - env:
+    - name: MAX_CONNECTION
+      value: "100"
+    image: nginx:1.16
+    imagePullPolicy: IfNotPresent
+    name: nginx-container
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: default-token-tl22h
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  nodeName: kind-2-worker
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: default
+  serviceAccountName: default
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: default-token-tl22h
+    secret:
+      defaultMode: 420
+      secretName: default-token-tl22h
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: "2021-04-23T14:00:10Z"
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: "2021-04-23T14:00:11Z"
+    status: "True"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: "2021-04-23T14:00:11Z"
+    status: "True"
+    type: ContainersReady
+  - lastProbeTime: null
+    lastTransitionTime: "2021-04-23T14:00:10Z"
+    status: "True"
+    type: PodScheduled
+  containerStatuses:
+  - containerID: containerd://1d3162de48fdaa906d04b3f2b77cf285f48c766be64b0c3e93ecc325182982b3
+    image: docker.io/library/nginx:1.16
+    imageID: docker.io/library/nginx@sha256:d20aa6d1cae56fd17cd458f4807e0de462caf2336f0b70b5eeb69fcaaf30dd9c
+    lastState: {}
+    name: nginx-container
+    ready: true
+    restartCount: 0
+    started: true
+    state:
+      running:
+        startedAt: "2021-04-23T14:00:11Z"
+  hostIP: 172.18.0.2
+  phase: Running
+  podIP: 10.244.1.23
+  podIPs:
+  - ip: 10.244.1.23
+  qosClass: BestEffort
+  startTime: "2021-04-23T14:00:10Z"

@@ -1,0 +1,18 @@
+[10-2]
+kubectl get nodes
+
+kubectl run  nginx0001 --image=nginx:latest
+
+kubectl get pods -o wide
+NAME          READY   STATUS      RESTARTS   AGE     IP              NODE                                               NOMINATED NODE   READINESS GATES
+hello-world   0/1     Completed   0          89m     192.168.72.65   ip-172-31-41-163.ap-northeast-1.compute.internal   <none>           <none>
+nginx0001     1/1     Running     0          4m38s   192.168.72.66   ip-172-31-41-163.ap-northeast-1.compute.internal   <none>           <none>
+
+
+docker container ls
+CONTAINER ID        IMAGE                    COMMAND                  CREATED             STATUS              PORTS               NAMES
+a4fc7745c1d7        nginx                    "/docker-entrypoint.Åc"   6 minutes ago       Up 6 minutes                            k8s_nginx0001_nginx0001_default_0b780c0d-a816-44cb-9d42-ce888770c002_0
+be97ebac2347        k8s.gcr.io/pause:3.4.1   "/pause"                 6 minutes ago       Up 6 minutes                            k8s_POD_nginx0001_default_0b780c0d-a816-44cb-9d42-ce888770c002_0
+
+
+docker container run -it -rm --name c0003 -h c0003 centos:7.5.1804 curl http://192.168.72.66

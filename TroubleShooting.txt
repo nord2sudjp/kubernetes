@@ -1,0 +1,19 @@
+Namespace切り替え	kubectl config set-context $(kubectl config current-context) --namespace=mynamespace	
+k8s completion	source <(kubectl completion bash)	
+情報を横長で見る	kubectl get pods -o wide	
+podやsvcをdry-runしてmanifestを生成する	kubectl create deploy xxxx --image xxx/xxx -o yaml --dry-run > xxx.yaml	
+既存のpodからyamlを出力	kubectl get pods -o yaml [pod名]	
+tokenの取得	kubeadm token list	
+podのログ確認	kubectl logs [podname]	
+kubeletのログ確認	journalctl -xeu kubelet
+journalctl -xeu kubelet -o verbose
+
+kubectl get event --all-namespaces -o wide
+kubelet
+
+
+kubectl describe pod
+kubectl logs POD_NAME
+kubectl exec -it POD_NAME /bin/sh
+kubectl get events -w
+Ubuntuを同一名前空間にデプロイ

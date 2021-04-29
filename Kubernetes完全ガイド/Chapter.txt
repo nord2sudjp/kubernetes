@@ -1,0 +1,479 @@
+# Chap04
+## サンプルポッド
+kubectl get pods
+
+kubectl delete -f sample-pod.yaml
+もしくは
+kubectl delete -f sample-pod
+kubectl delete pod --all
+
+## マニフェスト変更
+kubectl create -f sample-pod.yaml
+
+--> ここでマニフェスト変更
+
+kubectl apply -f sample-pod.yaml
+
+kubectl get pods sample-pod -o jsonpath="{.spec.containers[?(@.name=='nginx-container')].image}"
+
+
+## server side apply
+kubectl apply -f sample-pod.yaml --server-side
+kubectl set image pod sample-pod nginx-container=nginx1.17
+kubectl apply -f sample-pod.yaml --server-side
+kubectl apply -f sample-pod.yaml --server-side --force-conflicts
+
+
+## ランダム名の割り当て
+kubectl ceate -f sample-pod-random.yaml
+kubectl ceate -f sample-pod-random.yaml
+kubectl ceate -f sample-pod-random.yaml
+
+kubectl get pods
+
+! kubectl applyでは利用できない
+
+## prune
+kubectl apply -f ./prune --prune -l system=a
+
+
+## リソースの更新
+kubecto apply -f ./sample-pod.yaml
+
+kubectl describe pod sample-pod | grep Image:
+    Image:          nginx:1.16
+
+kubectl set image pods sample-pod nginx-container=nginx=1.17
+
+kubectl describe pod sample-pod | grep Image:
+    Image:          nginx=1.17
+    
+kubectl diff -f sample-pod.yaml
+
+## コマンドの実行
+kubectl exec -it sample-pod -- /bin/ls
+bin   dev  home  lib64  mnt  proc  run   srv  tmp  var
+boot  etc  lib   media  opt  root  sbin  sys  usr
+
+
+## port foward
+
+kubectl port-foward samle-pod 8888:80
+
+別のターミナルから
+curl -I localhost:8888
+
+## stern
+VERSION=1.11.0
+sudo curl -L https://github.com/wercker/stern/releases/download/${VERSION}/stern_linux_amd64 -o /usr/local/bin/stern
+sudo chmod 755 /usr/local/bin/stern
+
+## cp
+kubectl cp sample-pod:etc/hostname ./hostname
+
+kubectl cp hostname sample-pod:/tmp/newfile
+kubectl exec -it sample-pod -- ls /tmp
+
+## plugin
+~/.bash_profile or ~/.bashrc
+export PATH="${PATH}:${HOME}/.krew/bin
+
+kubectl krew
+
+
+# Chap05
+
+## 2 pods sample
+kubectl apply -f sample-2pods.yaml
+
+kubectl get pods -o wide
+NAME          READY   STATUS    RESTARTS   AGE   IP            NODE                 NOMINATED NODE   READINESS GATES
+sample-2pod   2/2     Running   0          26s   10.244.1.14   kindcluster-worker   <none>           <none>
+
+
+## portがおなじコンテナの起動
+kubectl apply -f sample-2pods.yaml
+
+kubectl get pods -o wide
+NAME               READY   STATUS    RESTARTS   AGE    IP            NODE                 NOMINATED NODE   READINESS GATES
+sample-2pod-fail   1/2     Error     2          32s    10.244.1.15   kindcluster-worker   <none>           <none>
+
+kubectl logs sample-2pod-fail -c nginx-container-113
+2021/04/16 13:02:41 [emerg] 1#1: bind() to 0.0.0.0:80 failed (98: Address already in use)
+
+
+## bashの起動
+kubectl exec -it sample-pod -- /bin/bash
+
+apt update && apt -y install iproute2 procps
+ip a | grep "inet "
+ss -napt | grep LISTEN
+
+## hostnetwork
+kubectl apply -f sample-hostnetwork.yaml
+kubectl get pods -o wide
+kubectl exec -it sample-hostnetwork -- hostname
+kubectl exec -it sample-hostnetwork -- cat /etc/resolv.conf
+
+## workingディレクトリの設定
+kubectl apply -f sample-wd.yaml
+kubectl exec -it sample-wd -- pwd
+
+## ReplicaSet
+kubectl apply -f sample-rs.yaml
+kubectl get replicasets -o wide
+kubectl get pods -l app=sample-app -o wide
+kubectl delete pods sample-rs-
+kubectl get pods -l app=sample-app -o wide
+kubectl describe replicaset sample-rs
+
+kubectl scale replicaset sample-rs --replicas 5
+
+## Deployment
+kubectl apply -f sample-deployment.yaml --record
+kubectl get replicasets -o yaml | head
+kubectl get deployments
+kubectl get replicasetes
+kubectl get pods
+
+## Rolling update
+kubectl set image deployment sample-deployment nginx-container=nginx:1.17 --record
+kubectl rollout status deployment sample-deployment
+kubectl get deployments
+kubectl get replicasetes
+kubectl get pods
+
+## rollback
+kubectl rollout history deployment sample-deployment
+kubectl rollout history deployment sample-deployment --revision 3
+
+## StatefullSet
+kubectl apply -f sample-ss.yaml
+kubectl get statefulsets
+kubectl get pods -o wide
+kubectl get persistentvolumeclaims
+
+
+## 永続化領域のデータ保持の確認
+kubectl exec -it sample-statefulset-0 -- df -h | grep /dev
+kubectl exec -it sample-statefulset-0 -- ls /usr/share/nginx/html/
+kubectl exec -it sample-statefulset-0 -- touch /usr/share/nginx/html/sample.html
+
+kubectl delete pod sample-statefulset-0
+kubectl 
+
+## DaemonSet
+kubectl apply -f sample-ds.yaml
+
+## Job
+kubectl apply -f sample-job.yaml
+kubectl get jobs
+kubectl get pods --watch
+
+
+## Service
+kubectl apply -f sample-deployment-1.yaml
+kubectl get pod sample-deployment-687d589688-29ndp -o jsonpath='{.metadata.labels}'
+{"app":"sample-app","pod-template-hash":"687d589688"}[root@ip-172-31-38-64 sample]
+
+kubectl get pods -l app=sample-app -o custom-columns="NAME:{metadata.name},IP:{status.podIP}"
+NAME                                 IP
+sample-deployment-687d589688-29ndp   10.244.1.18
+sample-deployment-687d589688-kl5bw   10.244.1.19
+sample-deployment-687d589688-xnspq   10.244.1.20
+kubectl apply -f sample-clusterip.yaml
+
+kubectl get service sample-clusterip
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+sample-clusterip   ClusterIP   10.96.142.121   <none>        8080/TCP   25s
+
+kubectl describe service sample-clusterip
+
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- curl -s http://10.96.142.121:8080
+
+## servcie discovery
+kubectl exec -it sample-deployment-687d589688-29ndp -- env | grep i sample_clusterip
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- curl -s http://sample-clusterip:8080kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- dig sample-clusterip.default.svc.cluster.local.
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- cat /etc/resolv.conf
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- dig -x 10.96.142.121
+
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- dig _http-port._tcp.sample-clusterip.default.svc.cluster.local. SRV
+
+
+## ClusterIP Service
+kubectl get services
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+kubernetes         ClusterIP   10.96.0.1       <none>        443/TCP    22h
+sample-clusterip   ClusterIP   10.96.142.121   <none>        8080/TCP   161m
+
+## ClusterIP Static
+kubectl apply -f sample-clusterip-vip.yaml
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- curl -s http://sample-clusterip-vip:8080
+
+## External IP
+kubectl get nodes -o custom-columns="NAME:{metadata.name},IP:{status.addresses[].address}"
+NAME                        IP
+kindcluster-control-plane   172.18.0.3
+kindcluster-worker          172.18.0.2
+
+## NodePort Service
+kubectl apply -f sample-nodport.yaml
+
+kubectl get services
+sample-nodeport        NodePort    10.96.59.242    <none>        8080:30080/TCP   46s
+
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- dig sample-nodeport.default.svc.cluster.local.
+;; ANSWER SECTION:
+sample-nodeport.default.svc.cluster.local. 30 IN A 10.96.59.242
+
+kubectl get nodes -o wide
+NAME                        STATUS   ROLES                  AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE       KERNEL-VERSION                  CONTAINER-RUNTIME
+kindcluster-control-plane   Ready    control-plane,master   23h   v1.20.2   172.18.0.3    <none>        Ubuntu 20.10   4.14.225-169.362.amzn2.x86_64   containerd://1.4.0-106-gce4439a8
+kindcluster-worker          Ready    <none>                 23h   v1.20.2   172.18.0.2    <none>        Ubuntu 20.10   4.14.225-169.362.amzn2.x86_64   containerd://1.4.0-106-gce4439a8
+
+curl -s http://172.18.0.2:30080
+Host=172.18.0.2  Path=/  From=sample-deployment-687d589688-29ndp  ClientIP=10.244.1.1  XFF=
+
+
+## Headless
+kubectl apply -f sample-headless.yaml
+kubectl apply -f sample-ss-headless.yaml
+kubectl get statefulsets
+
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- dig sample-headless.default.svc.cluster.local.
+;; ANSWER SECTION:
+sample-headless.default.svc.cluster.local. 30 IN A 10.244.1.12
+sample-headless.default.svc.cluster.local. 30 IN A 10.244.1.11
+sample-headless.default.svc.cluster.local. 30 IN A 10.244.1.13
+
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- dig sample-statefulset-0.sample-headless.default.svc.cluster.local.
+;; ANSWER SECTION:
+sample-statefulset-0.sample-headless.default.svc.cluster.local. 30 IN A 10.244.1.11
+
+
+## External Name
+kubectl apply -f sample-externalname.yaml
+
+kubectl get services
+sample-externalname   ExternalName   <none>       external.example.com   <none>    10s
+
+kubectl run --image=amsy810/tools:v2.0 --restart=Never --rm -i testpod --command -- dig sample-externalname.default.svc.cluster.local CNAME
+;; ANSWER SECTION:
+sample-externalname.default.svc.cluster.local. 30 IN CNAME external.example.com.
+
+
+# Chap06
+## Static Env
+kubectl apply -f sample-env.yaml
+kubectl exec -it sample-env -- env
+
+## Dynamic Env
+kubectl get pods sample-pod -o yaml
+kubectl get pods sample-env-pod -o yaml
+kubectl exec -it sample-env -- env | grep K8S_NODE
+
+
+## jq install
+sudo yum -y install epel-release
+sudo yum -y install jq
+
+## Secret
+
+
+echo -n "root" > ./username
+echo -n "rootpassword" > ./password
+kubectl create secret generic --save-config sample-db-auth --from-file=./username --from-file=./password
+kubectl get secret sample-db-auth -o json | jq .data
+kubectl get secret sample-db-auth -o json | jq -r .data.username
+kubectl get secret sample-db-auth -o json | jq -r .data.username | base64 --decode
+
+## TLSから生成する
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ./tls.key -out ./tls.crt -subj "/CN=sample1.example.com"
+kubectl create secret tls --save-config tls-sample --key ./tls.key --cert tls.crt
+
+## Secretの利用
+kubectl apply -f sample-secret-single-env.yaml
+kubectl get pods
+kubectl exec -it sample-secret-single-env -- env
+
+
+kubectl apply -f sample-secret-multi-env.yaml
+kubectl get pods
+kubectl exec -it sample-secret-multi-env -- env
+
+kubectl apply -f sample-secret-single-volume.yaml
+kubectl get pods
+kubectl exec -it sample-secret-single-volume -- cat /config/username.txt
+
+
+## Portforward
+ローカルホストの8080をpod 80番に転送する
+kubectl port-foward sample-secret-single-env 8080:80
+ssh -i C:\Mf\src\sshkey\docker_ec2.pem -L 23421:localhost:8080 ec2-user@13.114.85.229 -p 22
+
+
+
+## ConfigMap
+kubectl create configmap --save-config sample-configmap --from-file=./nginx.conf
+kubectl get configmap sample-configmap -o json | jq .data
+kubectl describe configmap sample-configmap
+
+kubectl apply -f ./sample-configmap.yaml
+kubectl get configmap sample-configmap -o json | jq .data
+kubectl describe configmap sample-configmap
+kubectl apply -f ./sample-configmap-scripts.yaml
+kubectl logs sample-configmap-scripts
+
+## ConfigMapの書き換え
+kubectl apply -f ./sample-configmap-multi.yaml
+
+kubectl exec -it sample-configmap-multi -- ls -l /config
+lrwxrwxrwx 1 root root 21 Apr 28 13:52 connection.max -> ..data/connection.max
+lrwxrwxrwx 1 root root 21 Apr 28 13:52 connection.min -> ..data/connection.min
+lrwxrwxrwx 1 root root 17 Apr 28 13:52 nginx.conf -> ..data/nginx.conf
+lrwxrwxrwx 1 root root 24 Apr 28 13:52 sample.properties -> ..data/sample.properties
+lrwxrwxrwx 1 root root 14 Apr 28 13:52 test.sh -> ..data/test.sh
+lrwxrwxrwx 1 root root 13 Apr 28 13:52 thread -> ..data/thread
+
+kubectl exec -it sample-configmap-multi -- cat /config/thread
+
+kubectl get pods
+sample-configmap-multi        1/1     Running   0          3m8s
+
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sample-configmap
+data:
+  thread: "32"
+EOF
+
+# Chapter 8
+## Node
+kubectl get nodes -o wide
+kubectl get nodes kind-2-worker -o yaml
+kubectl describe node kind-2-worker
+
+# Chapter 9
+## リソース
+kubectl apply -f s-resource.yaml
+kubectl describe node kind-2-worker
+kubectl describe node kind-2-worker2
+kubectl get pod sample-deployment-7fcd69f9b8-5sfwr -o json | jq ".spec.containers[].resources"
+
+## Eviction Manager
+kubectl get nodes -o custom-columns="NAME:.metadata.name,CPU Capacity:.status.capacity.cpu,CPU Allocatable:.status.allocatable.cpu,Mem Capacity:.status.capacity.memory,Mem Allocatable:.status.allocatable.memory"
+
+
+## Autoscaleを失敗させる
+kubectl scale deployment --replicas 24 s-resource
+kubectl get pods
+NAME                          READY   STATUS    RESTARTS   AGE
+s-resource-7fcd69f9b8-244v9   0/1     Pending   0          5s
+s-resource-7fcd69f9b8-6xg4s   1/1     Running   0          5s
+s-resource-7fcd69f9b8-7cckf   0/1     Pending   0          5s
+s-resource-7fcd69f9b8-7dj8w   0/1     Pending   0          5s
+
+kubecto describe node kind-2-worker
+Allocated resources:
+  (Total limits may be over 100 percent, i.e., overcommitted.)
+  Resource           Requests      Limits
+  --------           --------      ------
+  cpu                1600m (80%)   3100m (155%)
+  memory             3122Mi (79%)  6194Mi (157%)
+  ephemeral-storage  0 (0%)        0 (0%)
+  hugepages-2Mi      0 (0%)        0 (0%)
+
+kubectl describe pod s-resource-7fcd69f9b8-w7bth
+  Warning  FailedScheduling  60s (x15 over 20m)  default-scheduler  0/3 nodes are available: 1 node(s) had taint {node-role.kubernetes.io/master: }, that the pod didn't tolerate, 2 Insufficient cpu, 2 Insufficient memory.
+
+
+# Chapter 10 Healtcheck
+
+## sample health check
+kubectl apply -f s-healthcheck.yaml
+kubectl describe pod s-healthcheck | grep -E "Liveness|Readiness"
+
+## failed health
+kubectl apply -f s-liveness.yaml
+kubectl get pods
+kubectl get pod s-liveness --watch
+
+kubectl exec -it s-liveness -- rm -f /usr/share/nginx/html/index.html
+
+kubectl describe pod s-liveness
+  Warning  Unhealthy  35s (x2 over 38s)    kubelet            Liveness probe failed: HTTP probe failed with statuscode: 404
+  Normal   Killing    35s                  kubelet            Container configmap-container failed liveness probe, will be restarted
+
+## Init Containers
+kubectl apply -f s-initcontainer.yaml
+kubectl get pod s-initcontainer --watch
+kubectl exec -it s-initcontainer -- cat /usr/share/nginx/html/index.html
+
+# Chapter 11
+## Cordon
+
+kubectl get nodes
+kubectl cordon kind-2-worker
+kubectl uncordon kind-2-worker
+kubectl get nodes
+
+## drain
+
+kubectl apply -f sample-deployment.yaml
+kubectl get pods
+kubectl drain kind-2-worker2 --force --ignore-daemonsets --delete-local-data
+kubectl get pods
+
+# Chapter 12
+
+
+# Security
+## ServiceAccount
+kubectl create serviceaccount s-serviceaccount
+kubectl patch serviceaccount s-serviceaccount -p '{"imagePullSecrets": [{"name": "myregistrykey"}]}'
+kubectl get serviceaccount s-serviceaccount -o yaml
+kubectl get secret s-serviceaccount-token-lhgzv -o yaml
+
+
+## Token
+kubectl apply -f s-serviceaccoiunt-pod.yaml
+
+kubectl get pod s-serviceaccount-pod -o yaml
+  volumes:
+  - name: s-serviceaccount-token-lhgzv
+    secret:
+      defaultMode: 420
+      secretName: s-serviceaccount-token-lhgzv
+      
+kubectl exec -it s-serviceaccount-pod -- ls /var/run/secrets/kubernetes.io/serviceaccount/
+
+kubectl exec -it s-serviceaccount-pod -- bash
+apt update && apt -y install curl
+TOKEN=`cat /var/run/secrets/kubernetes.io/serviceaccount/token`
+curl -H "Authorization: Bearer ${TOKEN}" --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt https://kubernetes/api/v1/namespaces/default/pods
+
+
+# Chapter 18
+curl -sL https://istio.io/downloadIstioctl | sh -
+export PATH=$PATH:$HOME/.istioctl/bin
+
+istioctl manifest apply --set profile=demo
+
+istioctl kube-inject -f sample-deployment.yaml
+kubectl label namespace default istio-injection=enabled
+kubectl get namespaces -L istio-injection
+kubectl apply -f sample-deployment.yaml
+
+## bookinfo https://istio.io/latest/docs/setup/getting-started/#bookinfo
+kubectl delete -f <(istioctl manifest generate --set profile=demo)
+
+kubectl apply -f istio-1.9.4/samples/bookinfo/platform/kube/bookinfo.yaml
+kubectl get services
+kubectl apply -f istio-1.9.4/samples/bookinfo/networking/bookinfo-gateway.yaml
+istioctl analyze
+
+kubectl get svc istio-ingressgateway -n istio-system
+NAME                   TYPE           CLUSTER-IP    EXTERNAL-IP   PORT(S)                                                                      AGE
+istio-ingressgateway   LoadBalancer   10.96.132.2   <pending>     15021:30040/TCP,80:32330/TCP,443:30448/TCP,31400:30018/TCP,15443:30822/TCP   12m
